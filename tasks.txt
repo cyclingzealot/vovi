@@ -1,0 +1,7 @@
+Things I would like this code to do:
+
+With a given address:
+* What is the bus distance to set addresses in config?
+* What is the walk / bike / transit score?
+* What is the nearest grocery store with a given franchise name?
+

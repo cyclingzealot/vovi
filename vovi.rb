@@ -2,10 +2,16 @@
 
 require 'nokogiri'
 require 'open-uri'
+require 'uri'
 require 'byebug'
+require 'getoptlong'
+#require 'rubygems'
+require 'json'
 
-if ARGV[0].nil? then
-    $stderr.puts "Need the price of the home"
+require_relative './config.rb'
+
+if ARGV[1].nil? then
+    $stderr.puts "Need:\n- the price of the home\n- The address"
     puts ARGV
     exit 1
 end
@@ -18,7 +24,28 @@ puts url
 
 doc = Nokogiri::HTML(open(url))
 
-amount = doc.xpath("//tr[@class='taxResults']//td")[1].text.gsub(/[\s,]|\$/ ,"").to_f
+taxes = doc.xpath("//tr[@class='taxResults']//td")[1].text.gsub(/[\s,]|\$/ ,"").to_f
 
-puts "Estimated annual taxes: #{amount} $"
+
+gmapsUrlBase="https://maps.googleapis.com/maps/api/distancematrix/json?"
+
+$destinations.each { |dest,coords|
+    url = gmapsUrlBase + "origins=" + ARGV[1].tr(' ', '+') + "&destinations=" + coords.tr(' ', '+') + "&mode=transit" + "&key=" + $apiKey
+    resultsHash =  JSON.parse(open(url).read)
+
+    debugger
+    commuteTime = resultsHash['rows'][0]['elements'][0]['duration']['text']
+
+    puts "#{dest}: #{commuteTime}"
+
+    #debugger
+}
+
+
+
+
+
+
+# Output results
+puts "Estimated annual taxes: #{taxes} $"
 

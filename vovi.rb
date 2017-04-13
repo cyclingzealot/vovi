@@ -30,15 +30,23 @@ taxes = doc.xpath("//tr[@class='taxResults']//td")[1].text.gsub(/[\s,]|\$/ ,"").
 gmapsUrlBase="https://maps.googleapis.com/maps/api/distancematrix/json?"
 
 $destinations.each { |dest,coords|
-    url = gmapsUrlBase + "origins=" + ARGV[1].tr(' ', '+') + "&destinations=" + coords.tr(' ', '+') + "&mode=transit" + "&key=" + $apiKey
-    resultsHash =  JSON.parse(open(url).read)
 
-    debugger
-    commuteTime = resultsHash['rows'][0]['elements'][0]['duration']['text']
+    modeHash = {}
 
-    puts "#{dest}: #{commuteTime}"
+    ['walking', 'bicycling', 'transit'].each { |mode|
+        url = gmapsUrlBase + "origins=" + ARGV[1].tr(' ', '+') + "&destinations=" + coords.tr(' ', '+') + "&mode=#{mode}" + "&key=" + $apiKey
+        resultsHash =  JSON.parse(open(url).read)
 
-    #debugger
+
+        commuteTime = resultsHash['rows'][0]['elements'][0]['duration']['text']
+
+        modeHash[mode] = commuteTime
+
+        debugger if mode == 'cycling'
+    }
+
+    puts "#{dest}: #{modeHash.to_s}"
+
 }
 
 

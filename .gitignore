@@ -54,3 +54,4 @@ config.rb
 .buildpath
 .byebug_history
 .project
+dataSamples/

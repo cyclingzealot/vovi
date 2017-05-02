@@ -1,0 +1,19 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  Price: 1.5
+  bedrooms: 1.5
+  id: 1
+  longitude: 1.5
+  latitute: 1.5
+  pricePerRoom: 1.5
+  lastConfirmed: 2017-05-02 16:41:32
+
+two:
+  Price: 1.5
+  bedrooms: 1.5
+  id: 1
+  longitude: 1.5
+  latitute: 1.5
+  pricePerRoom: 1.5
+  lastConfirmed: 2017-05-02 16:41:32

@@ -1,0 +1,22 @@
+To generate data:
+1. ~/programming/apartment_prices$ python2.7 ./query_padmapper.py padmapper-download-file.txt processed-apts.txt
+
+2. used Chrome & devepper tools to get the http pin request in curl format
+
+3. Ran requested curl format
+
+4. Ran appartmentPricesData.rb > newDataFile.csv to generate the data with appartment prices
+
+5. Using vi, edit column headers
+
+5. Import that data in qgis using "Couche > Ajouter une couche > ... de texte délimitée"
+- Specify space seperated
+- Specify lat
+- Speciy long
+
+6. Re-save the layer so it can be used by interporlation tool
+
+7. Use interporlation tool with defualt settings
+
+8. Use gdal tool on tif file like this to extract value of tif file:
+gdallocationinfo -wgs84 heatMapExport.tif -75.742742 45.402412

@@ -10,8 +10,8 @@ require 'json'
 
 require_relative './config.rb'
 
-if ARGV[1].nil? then
-    $stderr.puts "Need:\n- the price of the home\n- The address"
+if ARGV[2].nil? then
+    $stderr.puts "Need:\n- the price of the home\n- The address\n- The bedrooms"
     puts ARGV
     exit 1
 end
@@ -50,7 +50,27 @@ $destinations.each { |dest,coords|
 }
 
 
+# Now for average rent
+url="https://maps.googleapis.com/maps/api/geocode/json?key=#{$apiKey}&address=#{ARGV[1].tr(' ', '+')}"
+resultsHash =  JSON.parse(open(url).read)
 
+lat  = resultsHash['results'][0]['geometry']['location']['lat'].to_f
+long = resultsHash['results'][0]['geometry']['location']['lng'].to_f
+
+results=`cd #{$tifDir}; for tifFile in heatMapTIN.tif heatMapIDW.tif; do  gdallocationinfo -wgs84  $tifFile #{long} #{lat} | grep Value | cut -d ':' -f 2 ; done`
+
+sumRentPerRoom = 0
+numDataPoints = 0
+results.each_line {|l| sumRentPerRoom += l.strip.to_i; numDataPoints += 1}
+
+avgRentPerRoom = (sumRentPerRoom / numDataPoints).round(2)
+
+puts "Avg rent: #{avgRentPerRoom}, total rent: #{avgRentPerRoom * ARGV[2].to_i}"
+
+rentPerLPRatio = (avgRentPerRoom.to_f * ARGV[2].to_i / ARGV[0].to_i)*100.round(2)
+
+
+puts "Rent / LP ratio: #{rentPerLPRatio.round(2)}"
 
 
 

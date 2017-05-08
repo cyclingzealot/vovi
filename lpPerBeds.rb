@@ -44,11 +44,11 @@ tbodies.each { |tbodyNode|
                 address = address.text
 
                 #debugger
-            
+
                 listings[address] = (lp/beds).round if beds > 0
             end
         end
-    end 
+    end
 }
 
 listings.sort_by {|_key, value| value}.reverse.each {|address, lpPerBeds| puts "#{address} #{lpPerBeds}"}

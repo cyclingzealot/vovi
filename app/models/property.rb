@@ -10,6 +10,8 @@ class Property < ActiveRecord::Base
     end
 
     def self.slurpData(pathToHtml, city)
+        propertiesCreated = 0
+        propertiesUpdated  = 0
         dataPath=pathToHtml
 
         doc = Nokogiri::HTML(open(dataPath))
@@ -49,15 +51,19 @@ class Property < ActiveRecord::Base
                     if property.nil?
                         Property.create! :address=>address, :bedrooms => beds, :lastConfirmed => DateTime.now,
                             :listingPrice => lp
+                        propertiesCreated += 1
                     else
                         property.update :address=>address, :bedrooms=>beds, :lastConfirmed=>DateTime.now,
                             :listingPrice => lp
+                        propertiesUpdated += 1
                     end
 
 
                 end
             end
         }
+
+        $stderr.puts "#{propertiesCreated} created, #{propertiesUpdated} updated"
 
     end
 
@@ -81,8 +87,13 @@ class Property < ActiveRecord::Base
             url="https://maps.googleapis.com/maps/api/geocode/json?key=#{$apiKey}&address=#{address.tr(' ', '+')}"
             resultsHash =  JSON.parse(open(url).read)
 
-            lat  = resultsHash['results'][0]['geometry']['location']['lat'].to_f
-            long = resultsHash['results'][0]['geometry']['location']['lng'].to_f
+            if not resultsHash['results'][0].nil?
+                lat  = resultsHash['results'][0]['geometry']['location']['lat'].to_f
+                long = resultsHash['results'][0]['geometry']['location']['lng'].to_f
+            else
+                $stderr.puts "No lat long for #{address}"
+                next
+            end
 
             if($minLat < lat and lat < $maxLat and $minLong < long and long < $maxLong)
                 p.update(:latitude=>lat, :longitude=>long)
@@ -94,17 +105,25 @@ class Property < ActiveRecord::Base
 
     end
 
+    def avgRent
+        self.averageRent
+    end
 
     def averageRent()
         long = self.longitude
         lat  = self.latitude
-        results=`cd #{$tifDir}; for tifFile in heatMapTIN.tif heatMapIDW.tif; do  gdallocationinfo -wgs84  $tifFile #{long} #{lat} | grep Value | cut -d ':' -f 2 ; done`
 
-        sumRentPerRoom = 0
-        numDataPoints = 0
-        results.each_line {|l| sumRentPerRoom += l.strip.to_i; numDataPoints += 1}
+        if not lat.nil? and not long.nil?
+            results=`cd #{$tifDir}; for tifFile in heatMapTIN.tif heatMapIDW.tif; do  gdallocationinfo -wgs84  $tifFile #{long} #{lat} | grep Value | cut -d ':' -f 2 ; done`
 
-        avgRentPerRoom = (sumRentPerRoom / numDataPoints).round(2)
+            sumRentPerRoom = 0
+            numDataPoints = 0
+            results.each_line {|l| sumRentPerRoom += l.strip.to_i; numDataPoints += 1}
+
+            avgRentPerRoom = (sumRentPerRoom / numDataPoints).round(2)
+        else
+            0
+        end
     end
 
 
@@ -113,13 +132,73 @@ class Property < ActiveRecord::Base
         rentPerLPRatio.round(2).to_f
     end
 
-    def self.bestInvestments()
-        Property.all.select{ |p| p.rentPerLpRatio >= 0.7} \
-            .sort_by{|p| p.rentPerLpRatio}.reverse \
+    def self.bestPotentialInvestments(maxPrice = nil)
+
+        potentialProperties = nil
+        if maxPrice.nil?
+            potentialProperties = Property.all.select{ |p| p.rentPerLpRatio >= 0.7}
+        else
+            potentialProperties = Property.all.select{ |p| p.rentPerLpRatio >= 0.7 and p.listingPrice < maxPrice }
+        end
+
+        potentialProperties.sort_by{|p| p.rentPerLpRatio}.reverse \
             .each {|p|
-            puts "#{p.address}\t#{p.rentPerLpRatio}\t#{p.listingPrice}\t#{p.bedrooms}"
+                puts p.investStr
             }
+
     end
+
+    def self.bestCapRates(maxPrice = nil)
+        if maxPrice.nil?
+            potentialProperties = Properties.all
+        else
+            potentialProperties = Property.all.select{ |p| p.listingPrice < maxPrice }
+        end
+
+        Property.all.sort_by{|p| p.roughCapRate}.reverse[0..20].each {
+            puts p.investStr
+        }
+    end
+
+    def investStr()
+        "#{self.address}\t#{self.rentPerLpRatio}\t#{self.listingPrice} $\t#{self.bedrooms} bds\t#{self.averageRent} $/month} %" #\t#{(self.roughCapRate*100).round(1)
+    end
+
+    def roughCapRate()
+        self.roughMonthlyNOI * 12 / self.listingPrice
+    end
+
+    def roughMonthlyNOI()
+        self.roughMonthlyGOI - roughMonthlyGOE
+    end
+
+    def roughMonthlyGOI
+        self.avgRent * 0.95
+    end
+
+    def avgAnnualInsurance
+        900.to_f
+    end
+
+    def roughMonthlyManagement
+        self.avgRent.to_f * 0.1
+    end
+
+    def roughMonthlyGOE
+        self.roughAnnualTaxes/12 + self.avgAnnualInsurance/12 + self.roughAnnualMaintenance/12 + self.roughMonthlyManagement
+    end
+
+    def roughAnnualTaxes()
+        amount=self.listingPrice
+        url="http://ottawa.ca/cgi-bin/tax/tax.pl?year=24&property_type=110&tr=1&f=8&sw=5&assessment=#{amount}&submit=Submit+Query&lang=en"
+        doc = Nokogiri::HTML(open(url))
+        taxes = doc.xpath("//tr[@class='taxResults']//td")[1].text.gsub(/[\s,]|\$/ ,"").to_f
+    end
+
+    def roughAnnualMaintenance
+        0.0125 * self.listingPrice
+    end
+
 
 
 
